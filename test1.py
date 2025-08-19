@@ -35,9 +35,10 @@ def verify_user(username, password):
         return bcrypt.checkpw(password.encode('utf-8'), hashed_pw)
     return False
 
-# ✅ คุณสามารถเพิ่ม user ได้โดยรันคำสั่งนี้ครั้งเดียว แล้วคอมเมนต์ออก
-#add_user("glueta", "1234")
-#add_user("fasai", "1234")
+# ✅ ตัวอย่างเพิ่ม user (รันครั้งเดียว)
+# add_user("glueta", "1234")
+# add_user("fasai", "1234")
+
 # --- ตั้งค่าฐานข้อมูลคำถาม (questions.db) ---
 qa_conn = sqlite3.connect('questions.db', check_same_thread=False)
 qa_c = qa_conn.cursor()
@@ -53,8 +54,9 @@ CREATE TABLE IF NOT EXISTS questions (
 ''')
 qa_conn.commit()
 
+# --- ฟังก์ชันจัดการคำถาม ---
 def get_all_questions():
-    qa_c.execute("SELECT * FROM questions")
+    qa_c.execute("SELECT id, question, answer, timestamp, correct_answer FROM questions")
     return qa_c.fetchall()
 
 def update_correct_answer(id, new_answer):
@@ -86,6 +88,7 @@ if not st.session_state.logged_in:
             st.rerun()
         else:
             st.error("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
+
 else:
     st.sidebar.success(f"👤 ผู้ใช้งาน: {st.session_state.username}")
     if st.sidebar.button("Logout"):
@@ -95,8 +98,13 @@ else:
 
     # --- แสดงตารางคำถาม + แก้ไข correct_answer ---
     data = get_all_questions()
-    df = pd.DataFrame(data, columns=["id", "question", "answer", "timestamp", "correct_answer"])
 
+    # 🔹 ป้องกัน ValueError กรณี column ไม่ตรง
+    if data:
+        data = [row[:5] for row in data]
+
+    df = pd.DataFrame(data, columns=["id", "question", "answer", "timestamp", "correct_answer"])
+    st.subheader("📋 ตารางคำถามทั้งหมด")
     if df.empty:
         st.info("ยังไม่มีข้อมูลคำถาม")
     else:
@@ -114,6 +122,6 @@ else:
             if new_answer != current_answer:
                 update_correct_answer(selected_id, new_answer)
                 st.success(f"บันทึกคำตอบที่ถูกต้องของ ID {selected_id} แล้ว")
-                st.rerun()
+                st.rerun()  # เพิ่มบรรทัดนี้เพื่อรีเฟรชหน้าและดึงข้อมูลล่าสุดจากฐานข้อมูล
             else:
                 st.info("ไม่มีการเปลี่ยนแปลงข้อมูล")
